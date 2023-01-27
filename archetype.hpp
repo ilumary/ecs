@@ -78,6 +78,23 @@ namespace ecs {
                 return get_component_reference<ComponentRef>(*this, loc);
             }
 
+            template<component C>
+            [[nodiscard]] bool contains() const noexcept {
+                if constexpr (std::is_same_v<C, entity>) {
+                    return true;
+                } else {
+                    components_.contains<C>();
+                }
+            };
+
+            [[nodiscard]] bool contains(component_id_t component_id) const noexcept {
+                if (component_id == component_id::value<entity>) {
+                    return true;
+                } else {
+                    return components_.contains(component_id);
+                }
+            }
+
         private:
 
             void init_component_sections(const component_meta_set& components_meta) {

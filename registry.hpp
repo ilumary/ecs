@@ -79,6 +79,14 @@ namespace ecs {
                 return get_impl<Args...>(*this, ent);
             }
 
+            template<component C>
+            [[nodiscard]] bool has(entity e) const {
+                ensure_alive(e);
+                auto e_id = e.id();
+                const auto& loc = get_location(e_id);
+                return loc.archetype->template contains<C>();
+            }
+
         private:
 
             template<component_reference... Args>

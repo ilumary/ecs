@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
+#include <limits>
 
 namespace ecs {
 
@@ -13,10 +15,10 @@ namespace ecs {
     class entity {
         public:
             ///@brief Invalid ID number
-            static constexpr auto invalid_id = std::numeric_limits<entity_id_t>::max();
+            static constexpr entity_id_t invalid_id = std::numeric_limits<entity_id_t>::max();
 
             /// @brief Invalid generation number 
-            static constexpr auto invalid_generation = std::numeric_limits<generation_id_t>::max();
+            static constexpr generation_id_t invalid_generation = std::numeric_limits<generation_id_t>::max();
 
             /// @brief default invalid entity
             static const entity invalid;

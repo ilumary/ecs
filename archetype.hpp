@@ -1,6 +1,7 @@
 #pragma once
 
 #include <numeric>
+#include <cstring>
 
 #include "hash_map.hpp"
 #include "sparse_map.hpp"
@@ -83,7 +84,7 @@ namespace ecs {
                 if constexpr (std::is_same_v<C, entity>) {
                     return true;
                 } else {
-                    components_.contains<C>();
+                    return components_.contains<C>();
                 }
             };
 
@@ -93,6 +94,14 @@ namespace ecs {
                 } else {
                     return components_.contains(component_id);
                 }
+            }
+
+            [[nodiscard]] std::vector<mem_block>& mem_blocks() noexcept {
+                return mem_blocks_;
+            }
+
+            [[nodiscard]] const std::vector<mem_block>& mem_blocks() const noexcept {
+                return mem_blocks_;
             }
 
         private:

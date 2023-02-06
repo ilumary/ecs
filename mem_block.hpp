@@ -63,8 +63,8 @@ namespace ecs {
 
                 for(const auto& [id, block_md] : *mem_blocks_info_) {
                     for(std::size_t i = 0; i < number_of_elements_; ++i) {
-                        //destruct every object in buffer
-                        block_md.meta.type->destruct(buffer_ + block_md.offset + i * block_md.meta.type->size);
+                        //TODO investigate why this causes crash
+                        //block_md.meta.type->destruct(buffer_ + block_md.offset + i * block_md.meta.type->size);
                     }
                 }
 
@@ -197,4 +197,71 @@ namespace ecs {
         }
     };
 
+    template<component_reference... Args>
+    class mem_block_view {
+        public:
+
+            static constexpr bool is_const = const_component_references_v<Args...>;
+
+            using mem_block_type = std::conditional_t<is_const, const mem_block&, mem_block&>;
+
+            /// @brief implements an iterator over memory blocks
+            class mem_block_iterator {
+                public:
+                    using iterator_concept = std::forward_iterator_tag;
+                    using iterator_category = std::forward_iterator_tag;
+                    using difference_type = int;
+                    using value_type = std::tuple<Args...>;
+                    using reference = std::tuple<Args...>;
+                    using element_type = reference;
+
+                    constexpr mem_block_iterator() = default;
+                    constexpr ~mem_block_iterator() = default;
+
+                    explicit constexpr mem_block_iterator(mem_block_type mb, std::size_t index = 0)
+                        : pointers_(std::make_tuple(component_fetch::fetch_pointer<Args>(mb, index)...)) {}
+
+                    constexpr mem_block_iterator(const mem_block_iterator& rhs) noexcept = default;
+                    constexpr mem_block_iterator& operator=(const mem_block_iterator& rhs) noexcept = default;
+                    constexpr mem_block_iterator(mem_block_iterator&& rhs) noexcept = default;
+                    constexpr mem_block_iterator& operator=(mem_block_iterator&& rhs) noexcept = default;
+
+                    constexpr mem_block_iterator& operator++() noexcept {
+                        std::apply([](auto&&... args) { (args++, ...); }, pointers_);
+                        return *this;
+                    }
+
+                    constexpr mem_block_iterator operator++(int) noexcept {
+                        mem_block_iterator tmp(*this);
+                        std::apply([](auto&&... args) { (args++, ...); }, pointers_);
+                        return tmp;
+                    }
+
+                    constexpr reference operator*() const noexcept {
+                        return std::apply([](auto&&... args) { return std::make_tuple(std::ref(*args)...); }, pointers_);
+                    }
+
+                    constexpr auto operator<=>(const mem_block_iterator& rhs) const noexcept = default;
+
+                private:
+                    std::tuple<std::add_pointer_t<std::remove_reference_t<Args>>...> pointers_;
+            };
+
+            explicit mem_block_view(mem_block_type mb) : mem_block_(mb) {}
+
+            constexpr mem_block_iterator begin() noexcept {
+                return mem_block_iterator(mem_block_, 0);
+            }
+
+            constexpr mem_block_iterator end() noexcept {
+                return mem_block_iterator(mem_block_, mem_block_.size());
+            }
+
+            const std::size_t size() const noexcept {
+                return mem_block_.size();
+            }
+
+        private:
+            mem_block_type mem_block_;
+    };
 }

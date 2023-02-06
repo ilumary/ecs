@@ -121,9 +121,9 @@ namespace ecs {
         std::size_t size;
         std::size_t align;
         std::string_view name;
-        void (*move_construct)(void*, void*);
-        void (*move_assign)(void*, void*);
-        void (*destruct)(void*);
+        void (*move_construct)(void*, void*) = [](void*, void*) -> void {};
+        void (*move_assign)(void*, void*) = [](void*, void*) -> void {};
+        void (*destruct)(void*) = [](void*) -> void {};
     };
 
     /// @brief Type for component ID

@@ -1,4 +1,5 @@
 #include <iostream>
+#include <functional>
 
 #include "registry.hpp"
 
@@ -17,7 +18,7 @@ struct s3 {
 };
 
 bool test_create(ecs::registry& reg) {
-    std::cout << "Test creating entities..." << std::endl;
+    std::cout << "Testing creating entities..." << std::endl;
     auto a = reg.create<s1, s3>({1, 2}, {92, 93});
     auto b = reg.create<s1, s3>({7, 3}, {75, 76});
     auto c = reg.create<s2>({});
@@ -25,7 +26,7 @@ bool test_create(ecs::registry& reg) {
 }
 
 bool test_delete(ecs::registry& reg) {
-    std::cout << "Test deleting entities..." << std::endl;
+    std::cout << "Testing deleting entities..." << std::endl;
     auto a = reg.create<s1, s3>({1, 2}, {92, 93});
     auto b = reg.create<s1, s3>({7, 3}, {75, 76});
     auto c = reg.create<s2>({});
@@ -46,12 +47,28 @@ bool test_get(ecs::registry& reg) {
     return (a_ref_s3.c == 'e' && std::get<0>(b_ref_s2_s3).f1 == 0.678f);
 }
 
+bool test_has(ecs::registry& reg) {
+    std::cout << "Testing has function..." << std::endl;
+    auto a = reg.create<s2, s3>({}, {});
+    return reg.has<s2>(a);
+}
+
+bool test_view(ecs::registry& reg) {
+    std::cout << "Testing views..." << std::endl;
+
+    for(const auto& [ref_s1, ref_s3] : reg.view<const s1&, const s3&>().each()) {
+        std::cout << ref_s1.i1 << " " << ref_s3.c << std::endl;
+    }
+
+    return true;
+};
+
 int main() {
     ecs::registry reg;
     std::vector<std::function<bool(ecs::registry& reg)>> test_functions = {
-        test_create, test_delete, test_get
+        test_create, test_delete, test_get, test_has, test_view
     };
-    uint32_t passed;
+    uint32_t passed = 0;
 
     for(auto& test : test_functions) {
         passed += test(reg);

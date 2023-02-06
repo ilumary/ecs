@@ -6,8 +6,13 @@
 #include "archetype.hpp"
 
 #include <bitset>
+#include <type_traits>
+#include <ranges>
 
 namespace ecs {
+
+    template<component_reference... Args>
+    class view;
 
     class registry {
 
@@ -79,6 +84,10 @@ namespace ecs {
                 return get_impl<Args...>(*this, ent);
             }
 
+            /// @brief Check if entity has component
+            /// @tparam C component type
+            /// @param e entity
+            /// @return boolean
             template<component C>
             [[nodiscard]] bool has(entity e) const {
                 ensure_alive(e);
@@ -86,6 +95,12 @@ namespace ecs {
                 const auto& loc = get_location(e_id);
                 return loc.archetype->template contains<C>();
             }
+
+            template<component_reference... Args>
+            ecs::view<Args...> view() requires(!const_component_references_v<Args...>);
+
+            template<component_reference... Args>
+            ecs::view<Args...> view() const requires const_component_references_v<Args...>;
 
         private:
 
@@ -119,9 +134,70 @@ namespace ecs {
                 return entity_map_.at(id);
             }
 
+            [[nodiscard]] archetype_registry& get_archetype_registry() noexcept {
+                return archetype_registry_;
+            }
+
+            [[nodiscard]] const archetype_registry& get_archetype_registry() const noexcept {
+                return archetype_registry_;
+            }
+
             entity_pool entity_pool_;
             archetype_registry archetype_registry_;
             sparse_map<entity_id_t, entity_location> entity_map_;
+
+            template<component_reference... Args>
+            friend class view;
     };
+
+    template<component_reference... Args>
+    class view {
+        public:
+            
+            static constexpr bool is_const = const_component_references_v<Args...>;
+
+            using registry_type = std::conditional_t<is_const, const registry&, registry&>;
+
+            explicit view(registry_type registry) noexcept : registry_(registry) {}
+
+            decltype(auto) each() requires (!is_const) {
+                return mem_blocks(registry_.get_archetype_registry()) | std::views::join;
+            }
+
+            decltype(auto) each() const requires (is_const) {
+                return mem_blocks(registry_.get_archetype_registry()) | std::views::join;
+            }
+
+        private:
+
+            static decltype(auto) mem_blocks(auto&& archetype_registry) {
+                auto filter_archetypes = [](auto& archetype) {
+                    return (... && archetype->template contains<std::decay_t<Args>>());
+                };
+                auto into_mem_blocks = [](auto& archetype) -> decltype(auto) { return archetype->mem_blocks(); };
+                auto as_typed_mem_block = [](auto& mem_block) -> decltype(auto) { return mem_block_view<Args...>(mem_block); };
+
+                return archetype_registry                               // for each archetype entry in archetype map
+                    | std::views::values                     // for each value, a pointer to archetype
+                    | std::views::filter(filter_archetypes)  // filter archetype by requested components
+                    | std::views::transform(into_mem_blocks)     // fetch chunks vector
+                    | std::views::join                       // join chunks together
+                    | std::views::transform(as_typed_mem_block); // each chunk casted to a typed chunk view range-like type
+            }
+
+            registry_type registry_;
+    };
+
+    template<component_reference... Args>
+    ecs::view<Args...> registry::view()
+        requires(!const_component_references_v<Args...>) {
+        return ecs::view<Args...>{ *this };
+    }
+
+    template<component_reference... Args>
+    ecs::view<Args...> registry::view() const
+        requires const_component_references_v<Args...> {
+        return ecs::view<Args...>{ *this };
+    }
 
 };

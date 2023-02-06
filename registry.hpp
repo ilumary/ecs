@@ -167,6 +167,18 @@ namespace ecs {
             decltype(auto) each() const requires (is_const) {
                 return mem_blocks(registry_.get_archetype_registry()) | std::views::join;
             }
+            
+            const std::size_t size() const noexcept {
+                std::size_t c = 0;
+                for(const auto& [cs, arch] : registry_.get_archetype_registry()) {
+                    if((... && arch->template contains<std::decay_t<Args>>())) {
+                        for(const auto& mb : arch->mem_blocks()) {
+                            c += mb.size();
+                        }
+                    }
+                }
+                return c;
+            }
 
         private:
 

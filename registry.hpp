@@ -14,6 +14,27 @@ namespace ecs {
     template<component_reference... Args>
     class view;
 
+    template<component_reference... Args>
+    struct view_arguments {
+        static constexpr bool is_const = const_component_references_v<Args...>;
+    };
+
+    template<typename T>
+    struct view_converter {};
+
+    template<typename... Args>
+    struct view_converter<std::tuple<Args...>> {
+        using view_t = view<Args...>;
+        using view_arguments_t = view_arguments<Args...>;
+    };
+
+    template<typename F>
+    struct func_decomposer {
+        using view_converter_t = view_converter<typename function_traits<F>::arguments_tuple_type>;
+        using view_t = view_converter_t::view_t;
+        static constexpr bool is_const = view_converter_t::view_arguments_t::is_const;
+    };
+
     class registry {
 
         public:
@@ -102,6 +123,12 @@ namespace ecs {
             template<component_reference... Args>
             ecs::view<Args...> view() const requires const_component_references_v<Args...>;
 
+            template<typename F>
+            void each(F&& func) requires(!func_decomposer<F>::is_const);
+
+            template<typename F>
+            void each(F&& func) const requires(func_decomposer<F>::is_const);
+
         private:
 
             template<component_reference... Args>
@@ -167,6 +194,22 @@ namespace ecs {
             decltype(auto) each() const requires (is_const) {
                 return mem_blocks(registry_.get_archetype_registry()) | std::views::join;
             }
+
+            void each(auto&& func) requires(!is_const) {
+                for (auto mem_block : mem_blocks(registry_.get_archetype_registry())) {
+                    for (auto entry : mem_block) {
+                        std::apply(func, entry);
+                    }
+                }
+            }
+
+            void each(auto&& func) const requires(is_const) {
+                for (auto mem_block : mem_blocks(registry_.get_archetype_registry())) {
+                    for (auto entry : mem_block) {
+                        std::apply(func, entry);
+                    }
+                }
+            }
             
             const std::size_t size() const noexcept {
                 std::size_t c = 0;
@@ -210,6 +253,18 @@ namespace ecs {
     ecs::view<Args...> registry::view() const
         requires const_component_references_v<Args...> {
         return ecs::view<Args...>{ *this };
+    }
+
+    template<typename F>
+    void registry::each(F&& func) requires(!func_decomposer<F>::is_const) {
+        using view_t = typename func_decomposer<F>::view_t;
+        view_t{ *this }.each(std::forward<F>(func));
+    }
+
+    template<typename F>
+    void registry::each(F&& func) const requires(func_decomposer<F>::is_const) {
+        using view_t = typename func_decomposer<F>::view_t;
+        view_t{ *this }.each(std::forward<F>(func));
     }
 
 };

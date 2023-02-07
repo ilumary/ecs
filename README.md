@@ -5,9 +5,9 @@ This is my entity component system for use in my game engine [nvkg](https://gith
 This project is under active development. Some of the listed features may not be complete or work correctly. A `1.0` release is only considered if the below listed functionality is completely implemented and properly tested.
 - [x] creating and deleting entities with components
 - [x] getting reference to component(s)
-- [ ] const correctness
-- [ ] counting a type of component
-- [ ] iterate over specified components
+- [x] const correctness
+- [x] counting a type of component
+- [x] iterate over specified components
 - [ ] thread safety
 
 ## Contents
@@ -24,7 +24,7 @@ This project is under active development. Some of the listed features may not be
 
 ## Build
 
-There are no external dependencies. The project can be build with any compiler supporting `c++20`. Tested with `gcc`, `clang++` and `apple clang++`.
+There are no external dependencies. The project can be build with any compiler supporting `c++20`. Tested with `gcc` and `clang`.
 
 ## Explanation
 

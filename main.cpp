@@ -53,6 +53,16 @@ bool test_has(ecs::registry& reg) {
     return reg.has<s2>(a);
 }
 
+bool test_func(ecs::registry& reg) {
+    std::cout << "Testing functions..." << std::endl;
+
+    reg.each([](const s1& ref_s1, const s3& ref_s3){
+        //std::cout << ref_s1.i1 << " " << ref_s3.c << std::endl;
+    });
+
+    return true;
+};
+
 bool test_view(ecs::registry& reg) {
     std::cout << "Testing views..." << std::endl;
 
@@ -74,7 +84,7 @@ bool test_size(ecs::registry& reg) {
 int main() {
     ecs::registry reg;
     std::vector<std::function<bool(ecs::registry& reg)>> test_functions = {
-        test_create, test_delete, test_get, test_has, test_view, test_size
+        test_create, test_delete, test_get, test_has, test_view, test_func, test_size
     };
     uint32_t passed = 0;
 

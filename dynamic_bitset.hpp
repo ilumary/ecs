@@ -63,6 +63,8 @@ namespace ecs {
             /// @brief Clear all bits
             inline void clear() noexcept {
                 blocks_.clear();
+                blocks_.resize(1);
+                blocks_[0] = 0;
             }
 
             /// @brief Equality operator

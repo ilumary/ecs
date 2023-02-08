@@ -188,15 +188,17 @@ namespace ecs {
             explicit view(registry_type registry) noexcept : registry_(registry) {}
 
             decltype(auto) each() requires (!is_const) {
-                return mem_blocks(registry_.get_archetype_registry()) | std::views::join;
+                return mem_blocks_views(registry_.get_archetype_registry())
+                    | std::views::join;
             }
 
             decltype(auto) each() const requires (is_const) {
-                return mem_blocks(registry_.get_archetype_registry()) | std::views::join;
+                return mem_blocks_views(registry_.get_archetype_registry())
+                    | std::views::join;
             }
 
             void each(auto&& func) requires(!is_const) {
-                for (auto mem_block : mem_blocks(registry_.get_archetype_registry())) {
+                for (auto mem_block : mem_blocks_views(registry_.get_archetype_registry())) {
                     for (auto entry : mem_block) {
                         std::apply(func, entry);
                     }
@@ -204,8 +206,8 @@ namespace ecs {
             }
 
             void each(auto&& func) const requires(is_const) {
-                for (auto mem_block : mem_blocks(registry_.get_archetype_registry())) {
-                    for (auto entry : mem_block) {
+                for (auto mem_block_view : mem_blocks_views(registry_.get_archetype_registry())) {
+                    for (auto entry : mem_block_view) {
                         std::apply(func, entry);
                     }
                 }
@@ -213,31 +215,32 @@ namespace ecs {
             
             const std::size_t size() const noexcept {
                 std::size_t c = 0;
-                for(const auto& [cs, arch] : registry_.get_archetype_registry()) {
-                    if((... && arch->template contains<std::decay_t<Args>>())) {
-                        for(const auto& mb : arch->mem_blocks()) {
-                            c += mb.size();
-                        }
-                    }
+                for(const auto& mb : mem_blocks(registry_.get_archetype_registry())) {
+                    c += mb.size();
                 }
                 return c;
             }
 
         private:
 
+            static decltype(auto) mem_blocks_views(auto&& archetype_registry) {
+                auto as_typed_mem_block = [](auto& mem_block) -> decltype(auto) { return mem_block_view<Args...>(mem_block); };
+
+                return mem_blocks(archetype_registry)
+                    | std::views::transform(as_typed_mem_block); // transform into mem_block view
+            }
+
             static decltype(auto) mem_blocks(auto&& archetype_registry) {
                 auto filter_archetypes = [](auto& archetype) {
                     return (... && archetype->template contains<std::decay_t<Args>>());
                 };
                 auto into_mem_blocks = [](auto& archetype) -> decltype(auto) { return archetype->mem_blocks(); };
-                auto as_typed_mem_block = [](auto& mem_block) -> decltype(auto) { return mem_block_view<Args...>(mem_block); };
 
-                return archetype_registry                               // for each archetype entry in archetype map
+                return archetype_registry                    // for each archetype entry in archetype map
                     | std::views::values                     // for each value, a pointer to archetype
                     | std::views::filter(filter_archetypes)  // filter archetype by requested components
-                    | std::views::transform(into_mem_blocks)     // fetch chunks vector
-                    | std::views::join                       // join chunks together
-                    | std::views::transform(as_typed_mem_block); // each chunk casted to a typed chunk view range-like type
+                    | std::views::transform(into_mem_blocks) // fetch chunks vector
+                    | std::views::join;                      // join chunks together
             }
 
             registry_type registry_;
